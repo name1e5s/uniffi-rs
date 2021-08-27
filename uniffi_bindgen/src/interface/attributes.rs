@@ -672,7 +672,8 @@ mod test {
         assert!(attrs.get_throws_err().is_none());
         assert!(attrs.get_delegate_method().is_none());
 
-        let (_, node) = weedle::attribute::ExtendedAttributeList::parse("[CallWith=asyncDispatch]").unwrap();
+        let (_, node) =
+            weedle::attribute::ExtendedAttributeList::parse("[CallWith=asyncDispatch]").unwrap();
         let attrs = MethodAttributes::try_from(&node).unwrap();
         assert!(matches!(attrs.get_delegate_method(), Some("asyncDispatch")));
     }
@@ -780,8 +781,10 @@ mod test {
             "ByRef not supported for interface definition"
         );
 
-        let (_, node) =
-            weedle::attribute::ExtendedAttributeList::parse("[Delegate=MyDelegateObject, Delegate]").unwrap();
+        let (_, node) = weedle::attribute::ExtendedAttributeList::parse(
+            "[Delegate=MyDelegateObject, Delegate]",
+        )
+        .unwrap();
         let err = InterfaceAttributes::try_from(&node).unwrap_err();
         assert_eq!(
             err.to_string(),

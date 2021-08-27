@@ -72,6 +72,8 @@ mod namespace;
 pub use namespace::Namespace;
 mod object;
 pub use object::{Constructor, Method, Object};
+mod delegate;
+pub use delegate::{Delegate, DelegateMethod};
 mod record;
 pub use record::{Field, Record};
 
@@ -96,6 +98,7 @@ pub struct ComponentInterface {
     records: Vec<Record>,
     functions: Vec<Function>,
     objects: Vec<Object>,
+    delegates: Vec<Delegate>,
     callback_interfaces: Vec<CallbackInterface>,
     errors: Vec<Error>,
 }
@@ -182,6 +185,17 @@ impl<'ci> ComponentInterface {
     pub fn get_object_definition(&self, name: &str) -> Option<&Object> {
         // TODO: probably we could store these internally in a HashMap to make this easier?
         self.objects.iter().find(|o| o.name == name)
+    }
+
+    /// List the definitions for every Delegate type in the interface.
+    pub fn iter_delegate_definitions(&self) -> Vec<Delegate> {
+        self.delegates.to_vec()
+    }
+
+    /// Get an Delegate definition by name, or None if no such Delegate is defined.
+    pub fn get_delegate_definition(&self, name: &str) -> Option<&Delegate> {
+        // TODO: probably we could store these internally in a HashMap to make this easier?
+        self.delegates.iter().find(|o| o.name == name)
     }
 
     /// List the definitions for every Callback Interface type in the interface.
@@ -507,6 +521,12 @@ impl<'ci> ComponentInterface {
         self.objects.push(defn);
     }
 
+    /// Called by `APIBuilder` impls to add a newly-parsed delegate definition to the `ComponentInterface`.
+    fn add_delegate_definition(&mut self, defn: Delegate) {
+        // Note that there will be no duplicates thanks to the previous type-finding pass.
+        self.delegates.push(defn);
+    }
+
     /// Called by `APIBuilder` impls to add a newly-parsed callback interface definition to the `ComponentInterface`.
     fn add_callback_interface_definition(&mut self, defn: CallbackInterface) {
         // Note that there will be no duplicates thanks to the previous type-finding pass.
@@ -751,6 +771,9 @@ impl APIBuilder for weedle::Definition<'_> {
                 } else if attrs.contains_error_attr() {
                     let e = d.convert(ci)?;
                     ci.add_error_definition(e);
+                } else if attrs.is_delegate() {
+                    let d = d.convert(ci)?;
+                    ci.add_delegate_definition(d);
                 } else {
                     let obj = d.convert(ci)?;
                     ci.add_object_definition(obj);
