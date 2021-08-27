@@ -18,6 +18,7 @@ use crate::bindings::backend::{CodeOracle, CodeType, TypeIdentifier};
 
 mod callback_interface;
 mod compounds;
+mod delegate;
 mod enum_;
 mod error;
 mod function;
@@ -122,6 +123,14 @@ impl<'a> KotlinWrapper<'a> {
                         as Box<dyn CodeDeclaration>
                 }),
         )
+        .chain(
+            ci.iter_delegate_definitions()
+            .into_iter()
+            .map(|inner| {
+                Box::new(delegate::KotlinDelegateObject::new(inner, ci))
+                    as Box<dyn CodeDeclaration>
+            }),
+        )
         .collect()
     }
 
@@ -221,7 +230,7 @@ impl KotlinCodeOracle {
             }
             Type::External { .. } => panic!("no support for external types yet"),
             Type::Wrapped { .. } => panic!("no support for wrapped types yet"),
-            Type::DelegateObject(_) => unreachable!("Delegate objects should never cross the FFI"),
+            Type::DelegateObject(s) => Box::new(delegate::DelegateObjectCodeType::new(s))
         }
     }
 }
