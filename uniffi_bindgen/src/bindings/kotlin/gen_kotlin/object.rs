@@ -5,7 +5,7 @@
 use std::fmt;
 
 use crate::bindings::backend::{CodeDeclaration, CodeOracle, CodeType, Literal};
-use crate::interface::{ComponentInterface, Object};
+use crate::interface::{ComponentInterface, Delegate, DelegateMethod, Object, Type};
 use askama::Template;
 
 // Filters is used by ObjectTemplate.kt, which looks for the filters module here.

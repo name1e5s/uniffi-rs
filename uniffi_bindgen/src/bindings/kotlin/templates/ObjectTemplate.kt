@@ -12,15 +12,33 @@ public interface {{ obj.name()|class_name_kt }}Interface {
 
 class {{ obj.name()|class_name_kt }}(
     pointer: Pointer
+    {%- match inner.delegate_type() %}
+    {%- when Some with (d) %},
+    private val delegate: {{ d|type_kt }}
+    {%- else %}
+    {%- endmatch %}
 ) : FFIObject(pointer), {{ obj.name()|class_name_kt }}Interface {
 
-    {%- match obj.primary_constructor() %}
-    {%- when Some with (cons) %}
+    {% let delegate_name = "delegate" %}
+    {% match obj.delegate_type() %}
+    {%- when Some with (delegate_type) %}
+        {%- match obj.primary_constructor() %}
+        {%- when Some with (cons) %}
+        constructor({% call kt::arg_list_decl(cons) -%}
+        {%- if cons.arguments().len() != 0 %}, {% endif %}
+        {{- delegate_name }}: {{ delegate_type|type_kt -}}
+        ) :
+        this({% call kt::to_ffi_call(cons) %}, {{ delegate_name }})
+        {%- else %}
+        {%- endmatch %}
+    {%- else %}
+        {%- match obj.primary_constructor() %}
+        {%- when Some with (cons) %}
     constructor({% call kt::arg_list_decl(cons) -%}) :
         this({% call kt::to_ffi_call(cons) %})
-    {%- when None %}
+        {%- else %}
+        {%- endmatch %}
     {%- endmatch %}
-
     /**
      * Disconnect the object from the underlying Rust object.
      *

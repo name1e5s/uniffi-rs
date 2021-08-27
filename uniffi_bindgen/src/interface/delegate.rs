@@ -95,6 +95,10 @@ impl Delegate {
     pub fn methods(&self) -> Vec<&DelegateMethod> {
         self.methods.iter().collect()
     }
+
+    pub fn find_method(&self, nm: &str) -> Option<&DelegateMethod> {
+        self.methods.iter().find(|m| m.name == nm)
+    }
 }
 
 impl Hash for Delegate {
