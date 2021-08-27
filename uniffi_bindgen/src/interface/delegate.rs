@@ -146,6 +146,10 @@ impl DelegateMethod {
         &self.name
     }
 
+    pub fn return_type(&self) -> Option<Type> {
+        self.return_type.to_owned()
+    }
+
     pub fn returns(&self) -> bool {
         self.return_type.is_some()
     }
