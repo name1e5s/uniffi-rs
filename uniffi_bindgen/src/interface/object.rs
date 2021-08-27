@@ -75,6 +75,7 @@ use super::{APIConverter, ComponentInterface};
 pub struct Object {
     pub(super) name: String,
     pub(super) constructors: Vec<Constructor>,
+    pub(super) delegate_type: Option<Type>,
     pub(super) methods: Vec<Method>,
     pub(super) ffi_func_free: FFIFunction,
     pub(super) uses_deprecated_threadsafe_attribute: bool,
@@ -85,6 +86,7 @@ impl Object {
         Object {
             name,
             constructors: Default::default(),
+            delegate_type: Default::default(),
             methods: Default::default(),
             ffi_func_free: Default::default(),
             uses_deprecated_threadsafe_attribute: false,
@@ -97,6 +99,10 @@ impl Object {
 
     pub fn type_(&self) -> Type {
         Type::Object(self.name.clone())
+    }
+
+    pub fn delegate_type(&self) -> Option<Type> {
+        self.delegate_type.clone()
     }
 
     pub fn constructors(&self) -> Vec<&Constructor> {
@@ -215,6 +221,18 @@ impl APIConverter<Object> for weedle::InterfaceDefinition<'_> {
         // Everyone gets a primary constructor, even if not declared explicitly.
         if object.primary_constructor().is_none() {
             object.constructors.push(Default::default());
+        }
+        if let Some(nm) = attributes.get_delegate_object() {
+            let delegate = ci.get_type(nm);
+            if let Some(Type::DelegateObject(_)) = delegate {
+                object.delegate_type = delegate;
+            } else {
+                bail!("Interface {} cannot have non-delegate {} as a delegate", object.name, nm)
+            }
+        } else {
+            if object.methods.iter().any(|m| m.uses_delegate_method()) {
+                bail!("Interface {} must specify a delegate in order to use CallWith", object.name)
+            }
         }
         Ok(object)
     }
@@ -391,6 +409,14 @@ impl Method {
         self.ffi_func.arguments = self.full_arguments().iter().map(Into::into).collect();
         self.ffi_func.return_type = self.return_type.as_ref().map(Into::into);
         Ok(())
+    }
+
+    pub fn uses_delegate_method(&self) -> bool {
+        self.attributes.get_delegate_method().is_some()
+    }
+
+    pub fn delegate_method(&self) -> Option<String> {
+        Some(self.attributes.get_delegate_method()?.to_string())
     }
 }
 

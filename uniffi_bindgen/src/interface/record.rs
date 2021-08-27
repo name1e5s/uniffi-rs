@@ -134,6 +134,9 @@ impl APIConverter<Field> for weedle::dictionary::DictionaryMember<'_> {
         if let Type::Object(_) = type_ {
             bail!("Objects cannot currently appear in record fields");
         }
+        if matches!(type_, Type::DelegateObject(_)) {
+            bail!("Delegate objects cannot appear in record fields")
+        }
         let default = match self.default {
             None => None,
             Some(v) => Some(convert_default_value(&v.value, &type_)?),

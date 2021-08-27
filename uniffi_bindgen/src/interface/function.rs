@@ -204,6 +204,9 @@ impl APIConverter<Argument> for weedle::argument::Argument<'_> {
 impl APIConverter<Argument> for weedle::argument::SingleArgument<'_> {
     fn convert(&self, ci: &mut ComponentInterface) -> Result<Argument> {
         let type_ = ci.resolve_type_expression(&self.type_)?;
+        if matches!(type_, Type::DelegateObject(_)) {
+            bail!("Delegate objects cannot be passed as arguments")
+        }
         let default = match self.default {
             None => None,
             Some(v) => Some(convert_default_value(&v.value, &type_)?),
