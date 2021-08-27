@@ -89,8 +89,7 @@ impl Delegate {
     }
 
     pub fn type_(&self) -> Type {
-        // TODO
-        Type::Object(self.name.clone())
+        Type::DelegateObject(self.name.clone())
     }
 
     pub fn methods(&self) -> Vec<&DelegateMethod> {
