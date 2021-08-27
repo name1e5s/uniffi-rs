@@ -36,7 +36,7 @@
  }
 
  impl KotlinDelegateObject {
-     pub fn new(inner: Delegate, ci: &ComponentInterface) -> Self {
+     pub fn new(inner: Delegate, _ci: &ComponentInterface) -> Self {
          Self {
              inner,
          }

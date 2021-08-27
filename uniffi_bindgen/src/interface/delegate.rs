@@ -150,7 +150,9 @@ impl DelegateMethod {
         self.return_type.to_owned()
     }
 
-    pub fn returns(&self) -> bool {
+    pub fn any_return_type(&self) -> bool {
+        // For now, we treat any non-void return type as a generic T.
+        // This may change.
         self.return_type.is_some()
     }
 
