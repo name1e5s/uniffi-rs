@@ -10,6 +10,10 @@ impl RustObject {
         Self
     }
 
+    fn from_string(_s: String) -> Self {
+        Self
+    }
+
     fn identity_string(&self, s: String) -> String {
         s
     }

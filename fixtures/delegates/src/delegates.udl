@@ -8,5 +8,11 @@ interface MyDelegate {
 
 [Delegate=MyDelegate]
 interface RustObject {
+  constructor();
+
+  [Name=from_string]
+  constructor(string s);
+
+  [CallWith=without_return]
   string identity_string(string s);
 };
