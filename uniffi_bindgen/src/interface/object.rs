@@ -55,7 +55,7 @@ use super::attributes::{ConstructorAttributes, InterfaceAttributes, MethodAttrib
 use super::ffi::{FFIArgument, FFIFunction, FFIType};
 use super::function::Argument;
 use super::types::{IterTypes, Type, TypeIterator};
-use super::{APIConverter, ComponentInterface};
+use super::{APIConverter, ComponentInterface, Delegate, DelegateMethod};
 
 /// An "object" is an opaque type that can be instantiated and passed around by reference,
 /// have methods called on it, and so on - basically your classic Object Oriented Programming
@@ -227,11 +227,18 @@ impl APIConverter<Object> for weedle::InterfaceDefinition<'_> {
             if let Some(Type::DelegateObject(_)) = delegate {
                 object.delegate_type = delegate;
             } else {
-                bail!("Interface {} cannot have non-delegate {} as a delegate", object.name, nm)
+                bail!(
+                    "Interface {} cannot have non-delegate {} as a delegate",
+                    object.name,
+                    nm
+                )
             }
         } else {
             if object.methods.iter().any(|m| m.uses_delegate_method()) {
-                bail!("Interface {} must specify a delegate in order to use CallWith", object.name)
+                bail!(
+                    "Interface {} must specify a delegate in order to use CallWith",
+                    object.name
+                )
             }
         }
         Ok(object)

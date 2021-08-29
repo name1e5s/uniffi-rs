@@ -104,6 +104,9 @@ impl<'a> KotlinWrapper<'a> {
         .chain(ci.iter_function_definitions().into_iter().map(|inner| {
             Box::new(function::KotlinFunction::new(inner, ci)) as Box<dyn CodeDeclaration>
         }))
+        .chain(ci.iter_delegate_definitions().into_iter().map(|inner| {
+            Box::new(delegate::KotlinDelegateObject::new(inner, ci)) as Box<dyn CodeDeclaration>
+        }))
         .chain(ci.iter_object_definitions().into_iter().map(|inner| {
             Box::new(object::KotlinObject::new(inner, ci)) as Box<dyn CodeDeclaration>
         }))
@@ -122,14 +125,6 @@ impl<'a> KotlinWrapper<'a> {
                     Box::new(callback_interface::KotlinCallbackInterface::new(inner, ci))
                         as Box<dyn CodeDeclaration>
                 }),
-        )
-        .chain(
-            ci.iter_delegate_definitions()
-            .into_iter()
-            .map(|inner| {
-                Box::new(delegate::KotlinDelegateObject::new(inner, ci))
-                    as Box<dyn CodeDeclaration>
-            }),
         )
         .collect()
     }
@@ -206,6 +201,7 @@ impl KotlinCodeOracle {
             Type::Duration => Box::new(miscellany::DurationCodeType),
 
             Type::Enum(id) => Box::new(enum_::EnumCodeType::new(id)),
+            Type::DelegateObject(s) => Box::new(delegate::DelegateObjectCodeType::new(s)),
             Type::Object(id) => Box::new(object::ObjectCodeType::new(id)),
             Type::Record(id) => Box::new(record::RecordCodeType::new(id)),
             Type::Error(id) => Box::new(error::ErrorCodeType::new(id)),
@@ -230,7 +226,6 @@ impl KotlinCodeOracle {
             }
             Type::External { .. } => panic!("no support for external types yet"),
             Type::Wrapped { .. } => panic!("no support for wrapped types yet"),
-            Type::DelegateObject(s) => Box::new(delegate::DelegateObjectCodeType::new(s))
         }
     }
 }
