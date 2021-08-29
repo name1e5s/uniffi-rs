@@ -389,6 +389,28 @@ impl Method {
         self.return_type.as_ref()
     }
 
+    fn delegate_method<'a>(
+        &self,
+        delegate_object: &Option<&'a Delegate>,
+    ) -> Option<&'a DelegateMethod> {
+        if delegate_object.is_none() || !self.uses_delegate_method() {
+            None
+        } else {
+            let delegate_object = delegate_object.unwrap();
+            let dm = self.delegate_method_name().unwrap();
+            delegate_object.find_method(&dm)
+        }
+    }
+
+    pub fn delegated_return_type(&self, delegate_object: &Option<&Delegate>) -> Option<Type> {
+        if let Some(dm) = self.delegate_method(delegate_object) {
+            if !dm.any_return_type() {
+                return dm.return_type();
+            }
+        }
+        self.return_type().cloned()
+    }
+
     pub fn ffi_func(&self) -> &FFIFunction {
         &self.ffi_func
     }
@@ -401,6 +423,14 @@ impl Method {
         self.attributes
             .get_throws_err()
             .map(|name| Type::Error(name.to_owned()))
+    }
+
+    pub fn delegated_throws_type(&self, delegate_object: Option<&Delegate>) -> Option<Type> {
+        if let Some(dm) = self.delegate_method(&delegate_object) {
+            dm.throws_type()
+        } else {
+            self.throws_type()
+        }
     }
 
     pub fn takes_self_by_arc(&self) -> bool {
@@ -422,7 +452,7 @@ impl Method {
         self.attributes.get_delegate_method().is_some()
     }
 
-    pub fn delegate_method(&self) -> Option<String> {
+    pub fn delegate_method_name(&self) -> Option<String> {
         Some(self.attributes.get_delegate_method()?.to_string())
     }
 }

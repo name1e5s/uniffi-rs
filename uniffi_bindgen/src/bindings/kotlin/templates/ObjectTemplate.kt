@@ -1,9 +1,10 @@
 {% import "macros.kt" as kt %}
 {%- let obj = self.inner() %}
+{%- let dobj = self.delegate_object() %}
 public interface {{ obj.name()|class_name_kt }}Interface {
     {% for meth in obj.methods() -%}
     fun {{ meth.name()|fn_name_kt }}({% call kt::arg_list_decl(meth) %})
-    {%- match meth.return_type() -%}
+    {%- match meth.delegated_return_type(dobj) -%}
     {%- when Some with (return_type) %}: {{ return_type|type_kt -}}
     {%- else -%}
     {%- endmatch %}
@@ -18,27 +19,12 @@ class {{ obj.name()|class_name_kt }}(
     {%- else %}
     {%- endmatch %}
 ) : FFIObject(pointer), {{ obj.name()|class_name_kt }}Interface {
-
-    {% let delegate_name = "delegate" %}
-    {% match obj.delegate_type() %}
-    {%- when Some with (delegate_type) %}
         {%- match obj.primary_constructor() %}
         {%- when Some with (cons) %}
-        constructor({% call kt::arg_list_decl(cons) -%}
-        {%- if cons.arguments().len() != 0 %}, {% endif %}
-        {{- delegate_name }}: {{ delegate_type|type_kt -}}
-        ) :
-        this({% call kt::to_ffi_call(cons) %}, {{ delegate_name }})
+    constructor({% call constructor_args_decl(cons) -%}) :
+        this({% call super_constructor_args(cons) %})
         {%- else %}
         {%- endmatch %}
-    {%- else %}
-        {%- match obj.primary_constructor() %}
-        {%- when Some with (cons) %}
-    constructor({% call kt::arg_list_decl(cons) -%}) :
-        this({% call kt::to_ffi_call(cons) %})
-        {%- else %}
-        {%- endmatch %}
-    {%- endmatch %}
     /**
      * Disconnect the object from the underlying Rust object.
      *
@@ -62,25 +48,18 @@ class {{ obj.name()|class_name_kt }}(
     }
 
     {% for meth in obj.methods() -%}
-    {%- match meth.return_type() -%}
-
-    {%- when Some with (return_type) -%}
-    override fun {{ meth.name()|fn_name_kt }}({% call kt::arg_list_protocol(meth) %}): {{ return_type|type_kt }} =
-        callWithPointer {
-            {%- call kt::to_ffi_call_with_prefix("it", meth) %}
-        }.let {
-            {{ "it"|lift_kt(return_type) }}
-        }
-
-    {%- when None -%}
     override fun {{ meth.name()|fn_name_kt }}({% call kt::arg_list_protocol(meth) %}) =
-        callWithPointer {
-            {%- call kt::to_ffi_call_with_prefix("it", meth) %}
+        {%- match meth.delegate_method_name() -%}
+        {%- when Some with (nm) %} delegate.{{ nm|fn_name_kt }} {
+            {% call method_body(meth) %}
         }
-    {% endmatch %}
+        {% else %}
+        {% call method_body(meth) %}
+        {% endmatch %}
     {% endfor %}
 
     companion object {
+        {%- if dobj.is_none() %}
         internal fun lift(ptr: Pointer): {{ obj.name()|class_name_kt }} {
             return {{ obj.name()|class_name_kt }}(ptr)
         }
@@ -90,10 +69,46 @@ class {{ obj.name()|class_name_kt }}(
             // fail to compile if they don't fit.
             return {{ obj.name()|class_name_kt }}.lift(Pointer(buf.getLong()))
         }
+        {% endif %}
 
-        {% for cons in obj.alternate_constructors() -%}
-        fun {{ cons.name()|fn_name_kt }}({% call kt::arg_list_decl(cons) %}): {{ obj.name()|class_name_kt }} =
-            {{ obj.name()|class_name_kt }}({% call kt::to_ffi_call(cons) %})
-        {% endfor %}
+        {%- for cons in obj.alternate_constructors() -%}
+        fun {{ cons.name()|fn_name_kt }}({% call constructor_args_decl(cons) %}): {{ obj.name()|class_name_kt }} =
+            {{ obj.name()|class_name_kt }}({% call super_constructor_args(cons) %})
+        {% endfor -%}
     }
 }
+
+{# Macros only used in objects -#}
+{% macro method_body(meth) -%}
+callWithPointer {
+    {%- call kt::to_ffi_call_with_prefix("it", meth) %}
+}
+{%- match meth.return_type() -%}
+{%- when Some with (return_type) -%}.let {
+    {{ "it"|lift_kt(return_type) }}
+}
+{%- when None -%}
+{%- endmatch %}
+{% endmacro -%}
+
+{% macro constructor_args_decl(cons) %}
+{% match obj.delegate_type() %}
+    {%- when Some with (delegate_type) %}
+        {%- let delegate_name = delegate_type|type_kt|var_name_kt %}
+        {{- delegate_name }}: {{ delegate_type|type_kt -}}
+        {%- if cons.arguments().len() != 0 %}, {% endif %}
+        {%- call kt::arg_list_decl(cons) -%}
+    {%- else %}
+        {% call kt::arg_list_decl(cons) -%}
+    {%- endmatch %}
+{% endmacro %}
+
+{% macro super_constructor_args(cons) %}
+{% match obj.delegate_type() %}
+    {%- when Some with (delegate_type) %}
+        {%- let delegate_name = delegate_type|type_kt|var_name_kt %}
+        {%- call kt::to_ffi_call(cons) %}, {{ delegate_name }}
+    {%- else %}
+        {%- call kt::to_ffi_call(cons) %}
+    {%- endmatch %}
+{% endmacro %}
