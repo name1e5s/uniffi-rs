@@ -573,6 +573,7 @@ impl<'ci> ComponentInterface {
         //  * each delegated method should match up with the delegate object's methods.
         // Each object not using a delegate object:
         //  * no method should use a delegate method.
+        let mut with_delegates = HashSet::<Type>::new();
         for obj in self.objects.iter() {
             match &obj.delegate_type {
                 Some(Type::DelegateObject(dobj)) => {
@@ -585,6 +586,7 @@ impl<'ci> ComponentInterface {
                         ),
                     };
 
+                    let mut used = false;
                     for method in obj.methods.iter() {
                         if let Some(dm) = &method.delegate_method_name() {
                             if dobj.find_method(dm).is_none() {
@@ -595,8 +597,15 @@ impl<'ci> ComponentInterface {
                                     dm,
                                 );
                             }
+                            used = true;
                         }
                     }
+
+                    if !used {
+                        bail!("Object '{}' has a delegate but no methods have [CallWith=] annotations to use it", obj.name())
+                    }
+
+                    with_delegates.insert(obj.type_());
                 }
                 Some(type_) => bail!(
                     "Delegates must be interfaces with a [Delegate] annotation ({:?} on {} is not)",
@@ -621,11 +630,19 @@ impl<'ci> ComponentInterface {
             if self.item_contains_delegate_objects(obj) {
                 bail!("Object '{}' cannot pass delegate objects across the FFI", obj.name())
             }
+
+            if self.iter_types_in_item(obj).any(|t| with_delegates.contains(t)) {
+                bail!("Object '{}' cannot pass objects that have delegates across the FFI", obj.name())
+            }
         }
 
         for func in self.functions.iter() {
             if self.item_contains_delegate_objects(func) {
                 bail!("Function '{}' cannot pass delegate objects across the FFI", func.name())
+            }
+
+            if self.iter_types_in_item(func).any(|t| with_delegates.contains(t)) {
+                bail!("Function '{}' cannot pass objects that have delegates across the FFI", func.name())
             }
         }
 
@@ -1179,6 +1196,24 @@ mod test {
             err.to_string(),
             "Object method \'TheObject.method\' calls with a delegate method \'TheDelegate.pass_thru\' which does not exist"
         );
+
+        // Perhaps the user has forgotten to use CallWith annotations.
+        let udl: &str = r#"
+            namespace test{};
+            [Delegate=TheDelegate]
+            interface TheObject {
+                void method();
+            };
+            [Delegate]
+            interface TheDelegate {
+                void pass_through();
+            };
+        "#;
+        let err = ComponentInterface::from_webidl(udl).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Object \'TheObject\' has a delegate but no methods have [CallWith=] annotations to use it"
+        );
     }
 
 
@@ -1244,5 +1279,51 @@ mod test {
             err.to_string(),
             "Object \'BadObject\' cannot pass delegate objects across the FFI"
         );
+
+        // Objects with delegates can't cross the FFI either; via functions…
+        let udl: &str = r#"
+            namespace test{
+                TheObject get_the_object();
+            };
+
+            [Delegate=TheDelegate]
+            interface TheObject {
+                void do_something();
+            };
+
+            [Delegate]
+            interface TheDelegate {
+                void pass_through();
+            };
+        "#;
+        let err = ComponentInterface::from_webidl(udl).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Function \'get_the_object\' cannot pass objects that have delegates across the FFI"
+        );
+
+        // …or Objects.
+        let udl: &str = r#"
+        namespace test{};
+
+        interface BadObject {
+            void set_the_object(TheObject the_object);
+        };
+
+        [Delegate=TheDelegate]
+        interface TheObject {
+            void do_something();
+        };
+
+        [Delegate]
+        interface TheDelegate {
+            void pass_through();
+        };
+    "#;
+    let err = ComponentInterface::from_webidl(udl).unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "Object \'BadObject\' cannot pass objects that have delegates across the FFI"
+    );
     }
 }
