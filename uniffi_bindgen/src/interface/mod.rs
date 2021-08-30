@@ -279,6 +279,12 @@ impl<'ci> ComponentInterface {
             .any(|t| matches!(t, Type::UInt8 | Type::UInt16 | Type::UInt32 | Type::UInt64))
     }
 
+    /// Check whether the given item contains any (possibly nested) delegates
+    pub fn item_contains_delegate_objects<T: IterTypes>(&self, item: &T) -> bool {
+        self.iter_types_in_item(item)
+            .any(|t| matches!(t, Type::DelegateObject(_)))
+    }
+
     /// Check whether the interface contains any optional types
     pub fn contains_optional_types(&self) -> bool {
         self.types
@@ -609,6 +615,18 @@ impl<'ci> ComponentInterface {
                     }
                 }
             };
+        }
+
+        for obj in self.objects.iter() {
+            if self.item_contains_delegate_objects(obj) {
+                bail!("Object '{}' cannot pass delegate objects across the FFI", obj.name())
+            }
+        }
+
+        for func in self.functions.iter() {
+            if self.item_contains_delegate_objects(func) {
+                bail!("Function '{}' cannot pass delegate objects across the FFI", func.name())
+            }
         }
 
         Ok(())
@@ -1160,6 +1178,71 @@ mod test {
         assert_eq!(
             err.to_string(),
             "Object method \'TheObject.method\' calls with a delegate method \'TheDelegate.pass_thru\' which does not exist"
+        );
+    }
+
+
+    #[test]
+    fn test_delegate_cannot_cross_ffi_check_consistency() {
+        // Delegate cannot pass via a function
+        let udl: &str = r#"
+            namespace test{
+                void set_delegate(TheDelegate theDelegate);
+            };
+
+            [Delegate]
+            interface TheDelegate {
+                void pass_through();
+            };
+        "#;
+        let err = ComponentInterface::from_webidl(udl).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Function \'set_delegate\' cannot pass delegate objects across the FFI"
+        );
+
+        // Delegate cannot pass via a method
+        let udl: &str = r#"
+            namespace test{
+            };
+
+            interface BadObject {
+                void set_delegate(TheDelegate theDelegate);
+            };
+
+            [Delegate]
+            interface TheDelegate {
+                void pass_through();
+            };
+        "#;
+        let err = ComponentInterface::from_webidl(udl).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Object \'BadObject\' cannot pass delegate objects across the FFI"
+        );
+
+        // Delegate cannot pass via a method, even indirectly
+        let udl: &str = r#"
+            namespace test{
+            };
+
+            interface BadObject {
+                void set_dictionary_with_delegate(Dict dict);
+            };
+
+            dictionary Dict {
+                TheDelegate theDelegate;
+            };
+
+            [Delegate]
+            interface TheDelegate {
+                void pass_through();
+            };
+        "#;
+        let err = ComponentInterface::from_webidl(udl).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Object \'BadObject\' cannot pass delegate objects across the FFI"
         );
     }
 }
