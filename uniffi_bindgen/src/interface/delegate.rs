@@ -184,9 +184,6 @@ impl APIConverter<DelegateMethod> for weedle::interface::OperationInterfaceMembe
         if !self.args.body.list.is_empty() {
             bail!("custom method arguments are not supported")
         }
-        // Delegate methods should only return `any` or `void`,
-        // e.g. transparently returning the delegated method's return type, or swallowing it.
-        // XXX At the moment, `any` is not recognized.
         let return_type = ci.resolve_return_type_expression(&self.return_type)?;
         Ok(DelegateMethod {
             name: match self.identifier {
@@ -211,8 +208,10 @@ impl APIConverter<DelegateMethod> for weedle::interface::OperationInterfaceMembe
 mod test {
     use super::*;
 
+    use super::super::object::{Method, Object};
+
     #[test]
-    fn test_that_all_argument_and_return_types_become_known() {
+    fn test_delegate_attribute_makes_a_delegate_object() {
         const UDL: &str = r#"
             namespace test{};
             [Delegate]
@@ -223,34 +222,15 @@ mod test {
         let ci = ComponentInterface::from_webidl(UDL).unwrap();
         assert_eq!(ci.iter_delegate_definitions().len(), 1);
         ci.get_delegate_definition("Testing").unwrap();
-
-        // assert_eq!(ci.iter_types().len(), 6);
-        // assert!(ci.iter_types().iter().any(|t| t.canonical_name() == "u16"));
-        // assert!(ci.iter_types().iter().any(|t| t.canonical_name() == "u32"));
-        // assert!(ci
-        //     .iter_types()
-        //     .iter()
-        //     .any(|t| t.canonical_name() == "Sequenceu32"));
-        // assert!(ci
-        //     .iter_types()
-        //     .iter()
-        //     .any(|t| t.canonical_name() == "string"));
-        // assert!(ci
-        //     .iter_types()
-        //     .iter()
-        //     .any(|t| t.canonical_name() == "Optionalstring"));
-        // assert!(ci
-        //     .iter_types()
-        //     .iter()
-        //     .any(|t| t.canonical_name() == "TypeTesting"));
     }
 
     #[test]
     fn test_the_name_new_is_reserved_for_constructors() {
         const UDL: &str = r#"
             namespace test{};
+            [Delegate]
             interface Testing {
-                void new(u32 v);
+                void new();
             };
         "#;
         let err = ComponentInterface::from_webidl(UDL).unwrap_err();
@@ -258,5 +238,119 @@ mod test {
             err.to_string(),
             "the method name \"new\" is reserved for the default constructor"
         );
+    }
+
+    #[test]
+    fn test_methods_have_zero_args() {
+        const UDL: &str = r#"
+            namespace test{};
+            [Delegate]
+            interface Testing {
+                void method(u32 arg);
+            };
+        "#;
+        let err = ComponentInterface::from_webidl(UDL).unwrap_err();
+        assert_eq!(err.to_string(), "custom method arguments are not supported");
+    }
+
+    #[test]
+    fn test_delegate_methods_can_throw() {
+        const UDL: &str = r#"
+            namespace test{};
+            [Delegate]
+            interface Testing {
+                [Throws=Error]
+                void method();
+            };
+
+            [Error]
+            enum Error {
+                "LOLWUT"
+            };
+        "#;
+        let ci = ComponentInterface::from_webidl(UDL).unwrap();
+        let dobj = ci.get_delegate_definition("Testing").unwrap();
+        let m = dobj.find_method("method").unwrap();
+
+        assert_eq!(m.throws_type(), Some(Type::Error("Error".into())));
+    }
+
+    #[test]
+    fn test_delegate_methods_can_override_return_types_and_throw_types() {
+        const UDL: &str = r#"
+            namespace test{};
+            [Delegate]
+            interface TheDelegate {
+                [Throws=Error]
+                void it_throws();
+
+                void it_swallows();
+
+                i32 it_counts();
+
+                any it_passes_through();
+            };
+
+            [Delegate=TheDelegate]
+            interface Testing {
+                [Throws=Error, CallWith=it_swallows]
+                void thrower();
+
+                [CallWith=it_throws]
+                void silent();
+
+                [CallWith=it_counts]
+                void counted();
+
+                [CallWith=it_passes_through]
+                sequence<i32?> exotic();
+            };
+
+            [Error]
+            enum Error {
+                "LOLWUT"
+            };
+        "#;
+        let ci = ComponentInterface::from_webidl(UDL).unwrap();
+        let dobj = ci.get_delegate_definition("TheDelegate");
+        let obj = ci.get_object_definition("Testing").unwrap();
+
+        fn find_method<'a>(nm: &str, obj: &'a Object) -> &'a Method {
+            obj.methods.iter().find(|m| m.name() == nm).unwrap()
+        }
+
+        let m = find_method("thrower", obj);
+        // thrower delegates through it_swallows, which returns void and throws nothing
+        assert_eq!(m.delegated_return_type(&dobj), None);
+        assert_eq!(m.delegated_throws_type(&dobj), None);
+
+        let m = find_method("silent", obj);
+        // silent delegates through it_throws, which returns void and throws nothing
+        assert_eq!(m.delegated_return_type(&dobj), None);
+        assert_eq!(
+            m.delegated_throws_type(&dobj),
+            Some(Type::Error("Error".into()))
+        );
+
+        let m = find_method("counted", obj);
+        // counted delegates through it_counts, which returns i32 and throws nothing
+        assert_eq!(m.delegated_return_type(&dobj), Some(Type::Int32));
+        assert_eq!(m.delegated_throws_type(&dobj), None);
+
+        let m = find_method("exotic", obj);
+        // exotic delegates through it_passes_through, which returns Sequence<Option<i32>> and throws nothing
+        assert_eq!(
+            m.delegated_return_type(&dobj),
+            Some(
+                Type::Sequence(
+                    Box::new(
+                        Type::Optional(
+                            Box::new(Type::Int32)
+                        )
+                    )
+                )
+            )
+        );
+        assert_eq!(m.delegated_throws_type(&dobj), None);
     }
 }

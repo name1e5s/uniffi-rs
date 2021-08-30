@@ -633,21 +633,39 @@ impl<'ci> ComponentInterface {
 
         for obj in self.objects.iter() {
             if self.item_contains_delegate_objects(obj) {
-                bail!("Object '{}' cannot pass delegate objects across the FFI", obj.name())
+                bail!(
+                    "Object '{}' cannot pass delegate objects across the FFI",
+                    obj.name()
+                )
             }
 
-            if self.iter_types_in_item(obj).any(|t| with_delegates.contains(t)) {
-                bail!("Object '{}' cannot pass objects that have delegates across the FFI", obj.name())
+            if self
+                .iter_types_in_item(obj)
+                .any(|t| with_delegates.contains(t))
+            {
+                bail!(
+                    "Object '{}' cannot pass objects that have delegates across the FFI",
+                    obj.name()
+                )
             }
         }
 
         for func in self.functions.iter() {
             if self.item_contains_delegate_objects(func) {
-                bail!("Function '{}' cannot pass delegate objects across the FFI", func.name())
+                bail!(
+                    "Function '{}' cannot pass delegate objects across the FFI",
+                    func.name()
+                )
             }
 
-            if self.iter_types_in_item(func).any(|t| with_delegates.contains(t)) {
-                bail!("Function '{}' cannot pass objects that have delegates across the FFI", func.name())
+            if self
+                .iter_types_in_item(func)
+                .any(|t| with_delegates.contains(t))
+            {
+                bail!(
+                    "Function '{}' cannot pass objects that have delegates across the FFI",
+                    func.name()
+                )
             }
         }
 
@@ -1221,7 +1239,6 @@ mod test {
         );
     }
 
-
     #[test]
     fn test_delegate_cannot_cross_ffi_check_consistency() {
         // Delegate cannot pass via a function
@@ -1293,6 +1310,7 @@ mod test {
 
             [Delegate=TheDelegate]
             interface TheObject {
+                [CallWith=pass_through]
                 void do_something();
             };
 
@@ -1317,6 +1335,7 @@ mod test {
 
         [Delegate=TheDelegate]
         interface TheObject {
+            [CallWith=pass_through]
             void do_something();
         };
 
@@ -1325,10 +1344,10 @@ mod test {
             void pass_through();
         };
     "#;
-    let err = ComponentInterface::from_webidl(udl).unwrap_err();
-    assert_eq!(
-        err.to_string(),
-        "Object \'BadObject\' cannot pass objects that have delegates across the FFI"
-    );
+        let err = ComponentInterface::from_webidl(udl).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Object \'BadObject\' cannot pass objects that have delegates across the FFI"
+        );
     }
 }

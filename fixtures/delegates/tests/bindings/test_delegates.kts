@@ -22,17 +22,18 @@ val delegate = Delegate()
 // Delegates are given to the rust object via a constructor.
 val rustObj0 = RustObject(delegate)
 
-val string0 = "placeholder string"
+val string1 = "placeholder string"
 // Alternative constructors take the delegate as the first argument.
 // The argument name is a mixed case version of the delegate interface name.
-val rustObj1 = RustObject.fromString(string = string0, myDelegate = delegate)
+val rustObj1 = RustObject.fromString(string = string1, myDelegate = delegate)
 
-assert(rustObj0.length() == string0.length) { "generic return" }
+assert(rustObj0.length() == 0) { "generic return" }
+assert(rustObj1.length() == string1.length) { "generic return" }
 
 assert(rustObj0.getString() == 1) { "different return type from method's own" }
 assert(rustObj0.getString() == 2) { "code is run each time the method is run" }
 assert(rustObj1.getString() == 3) { "delegate can be shared between objects" }
 
-val string1 = "meta-syntactic variable values"
-assert(rustObj1.identityString(string1) == Unit) { "void return" }
-assert(delegate.lastString == string1) { "" }
+val string2 = "meta-syntactic variable values"
+assert(rustObj1.identityString(string2) == Unit) { "void return" }
+assert(delegate.lastString == string2) { "Delegate is actually called" }

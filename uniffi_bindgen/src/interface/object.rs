@@ -418,7 +418,7 @@ impl Method {
             .map(|name| Type::Error(name.to_owned()))
     }
 
-    pub fn delegated_throws_type(&self, delegate_object: Option<&Delegate>) -> Option<Type> {
+    pub fn delegated_throws_type(&self, delegate_object: &Option<&Delegate>) -> Option<Type> {
         if let Some(dm) = self.delegate_method(&delegate_object) {
             dm.throws_type()
         } else {
@@ -486,7 +486,9 @@ impl APIConverter<Method> for weedle::interface::OperationInterfaceMember<'_> {
         if self.modifier.is_some() {
             bail!("method modifiers are not supported")
         }
-        let return_type = ci.resolve_return_type_expression(&self.return_type)?.try_into()?;
+        let return_type = ci
+            .resolve_return_type_expression(&self.return_type)?
+            .try_into()?;
         Ok(Method {
             name: match self.identifier {
                 None => bail!("anonymous methods are not supported {:?}", self),
