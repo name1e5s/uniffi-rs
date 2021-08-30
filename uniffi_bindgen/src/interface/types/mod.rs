@@ -21,7 +21,9 @@
 //! about how these API-level types map into the lower-level types of the FFI layer as represented
 //! by the [`ffi::FFIType`](super::ffi::FFIType) enum, but that's a detail that is invisible to end users.
 
-use std::{collections::hash_map::Entry, collections::BTreeSet, collections::HashMap};
+use std::{
+    collections::hash_map::Entry, collections::BTreeSet, collections::HashMap, convert::TryFrom,
+};
 
 use anyhow::{bail, Result};
 
@@ -299,6 +301,25 @@ impl IterTypes for Type {
 impl IterTypes for TypeUniverse {
     fn iter_types(&self) -> TypeIterator<'_> {
         Box::new(self.all_known_types.iter())
+    }
+}
+
+/// A type enum to encapsulate a Generic any type.
+#[derive(Clone, Debug, Hash)]
+pub enum ReturnType {
+    Concrete(Type),
+    Generic,
+    Void,
+}
+
+impl TryFrom<ReturnType> for Option<Type> {
+    type Error = anyhow::Error;
+    fn try_from(typ_: ReturnType) -> Result<Option<Type>> {
+        match typ_ {
+            ReturnType::Concrete(t) => Ok(Some(t)),
+            ReturnType::Void => Ok(None),
+            _ => bail!("Generic types not available in this position"),
+        }
     }
 }
 

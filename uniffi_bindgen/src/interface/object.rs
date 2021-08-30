@@ -46,7 +46,7 @@
 //! ```
 
 use std::collections::HashSet;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::hash::{Hash, Hasher};
 
 use anyhow::{bail, Result};
@@ -54,7 +54,7 @@ use anyhow::{bail, Result};
 use super::attributes::{ConstructorAttributes, InterfaceAttributes, MethodAttributes};
 use super::ffi::{FFIArgument, FFIFunction, FFIType};
 use super::function::Argument;
-use super::types::{IterTypes, Type, TypeIterator};
+use super::types::{IterTypes, ReturnType, Type, TypeIterator};
 use super::{APIConverter, ComponentInterface, Delegate, DelegateMethod};
 
 /// An "object" is an opaque type that can be instantiated and passed around by reference,
@@ -394,11 +394,14 @@ impl Method {
 
     pub fn delegated_return_type(&self, delegate_object: &Option<&Delegate>) -> Option<Type> {
         if let Some(dm) = self.delegate_method(delegate_object) {
-            if !dm.any_return_type() {
-                return dm.return_type();
+            match dm.return_type() {
+                ReturnType::Concrete(t) => Some(t.clone()),
+                ReturnType::Void => None,
+                ReturnType::Generic => self.return_type().cloned(),
             }
+        } else {
+            self.return_type().cloned()
         }
-        self.return_type().cloned()
     }
 
     pub fn ffi_func(&self) -> &FFIFunction {
@@ -483,7 +486,7 @@ impl APIConverter<Method> for weedle::interface::OperationInterfaceMember<'_> {
         if self.modifier.is_some() {
             bail!("method modifiers are not supported")
         }
-        let return_type = ci.resolve_return_type_expression(&self.return_type)?;
+        let return_type = ci.resolve_return_type_expression(&self.return_type)?.try_into()?;
         Ok(Method {
             name: match self.identifier {
                 None => bail!("anonymous methods are not supported {:?}", self),

@@ -80,6 +80,8 @@ pub use record::{Field, Record};
 pub mod ffi;
 pub use ffi::{FFIArgument, FFIFunction, FFIType};
 
+use self::types::ReturnType;
+
 /// The main public interface for this module, representing the complete details of an interface exposed
 /// by a rust component and the details of consuming it via an extern-C FFI layer.
 ///
@@ -470,17 +472,20 @@ impl<'ci> ComponentInterface {
     fn resolve_return_type_expression(
         &mut self,
         expr: &weedle::types::ReturnType<'_>,
-    ) -> Result<Option<Type>> {
+    ) -> Result<ReturnType> {
         Ok(match expr {
-            weedle::types::ReturnType::Undefined(_) => None,
+            weedle::types::ReturnType::Undefined(_) => ReturnType::Void,
             weedle::types::ReturnType::Type(t) => {
                 // Older versions of WebIDL used `void` for functions that don't return a value,
                 // while newer versions have replaced it with `undefined`. Special-case this for
                 // backwards compatibility for our consumers.
-                use weedle::types::{NonAnyType::Identifier, SingleType::NonAny, Type::Single};
+                use weedle::types::{
+                    NonAnyType::Identifier, SingleType::Any, SingleType::NonAny, Type::Single,
+                };
                 match t {
-                    Single(NonAny(Identifier(id))) if id.type_.0 == "void" => None,
-                    _ => Some(self.resolve_type_expression(t)?),
+                    Single(NonAny(Identifier(id))) if id.type_.0 == "void" => ReturnType::Void,
+                    Single(Any(_)) => ReturnType::Generic,
+                    _ => ReturnType::Concrete(self.resolve_type_expression(t)?),
                 }
             }
         })

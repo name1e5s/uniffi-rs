@@ -31,7 +31,7 @@
 //! assert_eq!(func.arguments().len(), 0);
 //! # Ok::<(), anyhow::Error>(())
 //! ```
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::hash::{Hash, Hasher};
 
 use anyhow::{bail, Result};
@@ -136,7 +136,7 @@ impl APIConverter<Function> for weedle::namespace::NamespaceMember<'_> {
 
 impl APIConverter<Function> for weedle::namespace::OperationNamespaceMember<'_> {
     fn convert(&self, ci: &mut ComponentInterface) -> Result<Function> {
-        let return_type = ci.resolve_return_type_expression(&self.return_type)?;
+        let return_type = ci.resolve_return_type_expression(&self.return_type)?.try_into()?;
         Ok(Function {
             name: match self.identifier {
                 None => bail!("anonymous functions are not supported {:?}", self),

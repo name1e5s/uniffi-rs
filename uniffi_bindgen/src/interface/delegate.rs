@@ -53,7 +53,7 @@ use std::hash::{Hash, Hasher};
 use anyhow::{bail, Result};
 
 use super::attributes::MethodAttributes;
-use super::types::Type;
+use super::types::{ReturnType, Type};
 use super::{APIConverter, ComponentInterface};
 
 /// An "object" is an opaque type that can be instantiated and passed around by reference,
@@ -141,7 +141,7 @@ impl APIConverter<Delegate> for weedle::InterfaceDefinition<'_> {
 pub struct DelegateMethod {
     pub(super) name: String,
     pub(super) object_name: String,
-    pub(super) return_type: Option<Type>,
+    pub(super) return_type: ReturnType,
     pub(super) attributes: MethodAttributes,
 }
 
@@ -150,14 +150,8 @@ impl DelegateMethod {
         &self.name
     }
 
-    pub fn return_type(&self) -> Option<Type> {
-        self.return_type.to_owned()
-    }
-
-    pub fn any_return_type(&self) -> bool {
-        // For now, we treat any non-void return type as a generic T.
-        // This may change.
-        self.return_type.is_some()
+    pub fn return_type(&self) -> &ReturnType {
+        &self.return_type
     }
 
     pub fn throws(&self) -> Option<&str> {
@@ -170,15 +164,6 @@ impl DelegateMethod {
             .map(|name| Type::Error(name.to_owned()))
     }
 }
-
-// impl IterTypes for DelegateMethod {
-//     fn iter_types(&self) -> TypeIterator<'_> {
-//         // XXX Not sure that this is needed at all here.
-//         Box::new(
-//             Default::default(),
-//         )
-//     }
-// }
 
 impl Hash for DelegateMethod {
     fn hash<H: Hasher>(&self, state: &mut H) {
