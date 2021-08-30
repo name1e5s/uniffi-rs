@@ -222,24 +222,14 @@ impl APIConverter<Object> for weedle::InterfaceDefinition<'_> {
         if object.primary_constructor().is_none() {
             object.constructors.push(Default::default());
         }
+
+        // Finally, add the delegate object.
         if let Some(nm) = attributes.get_delegate_object() {
-            let delegate = ci.get_type(nm);
-            if let Some(Type::DelegateObject(_)) = delegate {
-                object.delegate_type = delegate;
-            } else {
-                bail!(
-                    "Interface {} cannot have non-delegate {} as a delegate",
-                    object.name,
-                    nm
-                )
-            }
-        } else {
-            if object.methods.iter().any(|m| m.uses_delegate_method()) {
-                bail!(
-                    "Interface {} must specify a delegate in order to use CallWith",
-                    object.name
-                )
-            }
+            object.delegate_type = ci
+                .get_type(nm)
+                // No type has been declared of this name, but
+                // we let check_validity() detect and report the error.
+                .or_else(|| Some(Type::DelegateObject(nm.into())));
         }
         Ok(object)
     }

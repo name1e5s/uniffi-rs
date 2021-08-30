@@ -559,6 +559,58 @@ impl<'ci> ComponentInterface {
                 }
             }
         }
+
+        // Do some checks around delegate objects. This ensures code-generation isn't full of error handling.
+        // Each object using a delegate object:
+        //  * the delegate should be declared.
+        //  * the declared delegate should be an interface with a [Delegate] annotation.
+        //  * each delegated method should match up with the delegate object's methods.
+        // Each object not using a delegate object:
+        //  * no method should use a delegate method.
+        for obj in self.objects.iter() {
+            match &obj.delegate_type {
+                Some(Type::DelegateObject(dobj)) => {
+                    let dobj = match self.get_delegate_definition(dobj) {
+                        Some(d) => d,
+                        _ => bail!(
+                            "Object '{}' has a delegate '{}' which is not defined",
+                            obj.name(),
+                            dobj
+                        ),
+                    };
+
+                    for method in obj.methods.iter() {
+                        if let Some(dm) = &method.delegate_method_name() {
+                            if dobj.find_method(dm).is_none() {
+                                bail!("Object method '{}.{}' calls with a delegate method '{}.{}' which does not exist",
+                                    obj.name(),
+                                    method.name(),
+                                    dobj.name(),
+                                    dm,
+                                );
+                            }
+                        }
+                    }
+                }
+                Some(type_) => bail!(
+                    "Delegates must be interfaces with a [Delegate] annotation ({:?} on {} is not)",
+                    type_,
+                    obj.name()
+                ),
+                _ => {
+                    for method in obj.methods.iter() {
+                        if let Some(dm) = &method.delegate_method_name() {
+                            bail!("Object method '{}.{}' calls with a delegate method '{}' on a delegate that does not exist",
+                                obj.name(),
+                                method.name(),
+                                dm,
+                            );
+                        }
+                    }
+                }
+            };
+        }
+
         Ok(())
     }
 
@@ -1017,5 +1069,97 @@ mod test {
         "#;
         let ci = ComponentInterface::from_webidl(UDL).unwrap();
         assert!(ci.item_contains_unsigned_types(&Type::Object("TestObj".into())));
+    }
+
+    #[test]
+    fn test_delegate_methods_check_consistency() {
+        // Delegate missing completely
+        let udl: &str = r#"
+            namespace test{};
+            [Delegate=TheDelegate]
+            interface TheObject {
+                [CallWith=pass_through]
+                void method();
+            };
+        "#;
+        let err = ComponentInterface::from_webidl(udl).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Object \'TheObject\' has a delegate \'TheDelegate\' which is not defined"
+        );
+
+        // Delegate missing the annotation "Delegate"
+        let udl: &str = r#"
+            namespace test{};
+            [Delegate=TheDelegate]
+            interface TheObject {
+                [CallWith=pass_through]
+                void method();
+            };
+            interface TheDelegate {
+                void pass_through();
+            };
+        "#;
+        let err = ComponentInterface::from_webidl(udl).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Delegates must be interfaces with a [Delegate] annotation (Object(\"TheDelegate\") on TheObject is not)"
+        );
+
+        // The object declaring an incorrect type
+        let udl: &str = r#"
+            namespace test{};
+            [Delegate=TheDictionary]
+            interface TheObject {
+                [CallWith=pass_through]
+                void method();
+            };
+            dictionary TheDictionary {
+                string field;
+            };
+
+        "#;
+        let err = ComponentInterface::from_webidl(udl).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Delegates must be interfaces with a [Delegate] annotation (Record(\"TheDictionary\") on TheObject is not)"
+        );
+
+        // The delegated call with method is does not have a delegate to go through.
+        let udl: &str = r#"
+            namespace test{};
+            interface TheObject {
+                [CallWith=pass_through]
+                void method();
+            };
+            [Delegate]
+            interface TheDelegate {
+                void pass_through();
+            };
+        "#;
+        let err = ComponentInterface::from_webidl(udl).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Object method \'TheObject.method\' calls with a delegate method \'pass_through\' on a delegate that does not exist"
+        );
+
+        // The delegated call with method is misspelled
+        let udl: &str = r#"
+            namespace test{};
+            [Delegate=TheDelegate]
+            interface TheObject {
+                [CallWith=pass_thru]
+                void method();
+            };
+            [Delegate]
+            interface TheDelegate {
+                void pass_through();
+            };
+        "#;
+        let err = ComponentInterface::from_webidl(udl).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Object method \'TheObject.method\' calls with a delegate method \'TheDelegate.pass_thru\' which does not exist"
+        );
     }
 }
