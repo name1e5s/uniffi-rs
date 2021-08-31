@@ -73,7 +73,7 @@ pub use namespace::Namespace;
 mod object;
 pub use object::{Constructor, Method, Object};
 mod delegate;
-pub use delegate::{Delegate, DelegateMethod};
+pub use delegate::{DelegateObject, DelegateMethod};
 mod record;
 pub use record::{Field, Record};
 
@@ -100,7 +100,7 @@ pub struct ComponentInterface {
     records: Vec<Record>,
     functions: Vec<Function>,
     objects: Vec<Object>,
-    delegates: Vec<Delegate>,
+    delegate_objects: Vec<DelegateObject>,
     callback_interfaces: Vec<CallbackInterface>,
     errors: Vec<Error>,
 }
@@ -190,14 +190,14 @@ impl<'ci> ComponentInterface {
     }
 
     /// List the definitions for every Delegate type in the interface.
-    pub fn iter_delegate_definitions(&self) -> Vec<Delegate> {
-        self.delegates.to_vec()
+    pub fn iter_delegate_definitions(&self) -> Vec<DelegateObject> {
+        self.delegate_objects.to_vec()
     }
 
     /// Get an Delegate definition by name, or None if no such Delegate is defined.
-    pub fn get_delegate_definition(&self, name: &str) -> Option<&Delegate> {
+    pub fn get_delegate_definition(&self, name: &str) -> Option<&DelegateObject> {
         // TODO: probably we could store these internally in a HashMap to make this easier?
-        self.delegates.iter().find(|o| o.name == name)
+        self.delegate_objects.iter().find(|o| o.name == name)
     }
 
     /// List the definitions for every Callback Interface type in the interface.
@@ -533,9 +533,9 @@ impl<'ci> ComponentInterface {
     }
 
     /// Called by `APIBuilder` impls to add a newly-parsed delegate definition to the `ComponentInterface`.
-    fn add_delegate_definition(&mut self, defn: Delegate) {
+    fn add_delegate_definition(&mut self, defn: DelegateObject) {
         // Note that there will be no duplicates thanks to the previous type-finding pass.
-        self.delegates.push(defn);
+        self.delegate_objects.push(defn);
     }
 
     /// Called by `APIBuilder` impls to add a newly-parsed callback interface definition to the `ComponentInterface`.

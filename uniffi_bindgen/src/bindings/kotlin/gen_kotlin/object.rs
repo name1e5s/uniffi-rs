@@ -5,7 +5,7 @@
 use std::fmt;
 
 use crate::bindings::backend::{CodeDeclaration, CodeOracle, CodeType, Literal};
-use crate::interface::{ComponentInterface, Delegate, Object, Type};
+use crate::interface::{ComponentInterface, DelegateObject, Object, Type};
 use askama::Template;
 
 // Filters is used by ObjectTemplate.kt, which looks for the filters module here.
@@ -66,7 +66,7 @@ impl CodeType for ObjectCodeType {
 #[template(syntax = "kt", escape = "none", path = "ObjectTemplate.kt")]
 pub struct KotlinObject {
     inner: Object,
-    delegate_object: Option<Delegate>,
+    delegate_object: Option<DelegateObject>,
 }
 
 impl KotlinObject {
@@ -83,7 +83,7 @@ impl KotlinObject {
     pub fn inner(&self) -> &Object {
         &self.inner
     }
-    pub fn delegate_object(&self) -> Option<&Delegate> {
+    pub fn delegate_object(&self) -> Option<&DelegateObject> {
         self.delegate_object.as_ref()
     }
 }

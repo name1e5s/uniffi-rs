@@ -71,12 +71,12 @@ use super::{APIConverter, ComponentInterface};
 /// TODO:
 ///  - maybe "Class" would be a better name than "Object" here?
 #[derive(Debug, Clone)]
-pub struct Delegate {
+pub struct DelegateObject {
     pub(super) name: String,
     pub(super) methods: Vec<DelegateMethod>,
 }
 
-impl Delegate {
+impl DelegateObject {
     fn new(name: String) -> Self {
         Self {
             name,
@@ -101,19 +101,19 @@ impl Delegate {
     }
 }
 
-impl Hash for Delegate {
+impl Hash for DelegateObject {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
         self.methods.hash(state);
     }
 }
 
-impl APIConverter<Delegate> for weedle::InterfaceDefinition<'_> {
-    fn convert(&self, ci: &mut ComponentInterface) -> Result<Delegate> {
+impl APIConverter<DelegateObject> for weedle::InterfaceDefinition<'_> {
+    fn convert(&self, ci: &mut ComponentInterface) -> Result<DelegateObject> {
         if self.inheritance.is_some() {
             bail!("interface inheritence is not supported");
         }
-        let mut delegate = Delegate::new(self.identifier.0.to_string());
+        let mut delegate = DelegateObject::new(self.identifier.0.to_string());
         // Convert each member into a constructor or method, guarding against duplicate names.
         let mut member_names = HashSet::new();
         for member in &self.members.body {

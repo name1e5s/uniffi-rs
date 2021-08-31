@@ -55,7 +55,7 @@ use super::attributes::{ConstructorAttributes, InterfaceAttributes, MethodAttrib
 use super::ffi::{FFIArgument, FFIFunction, FFIType};
 use super::function::Argument;
 use super::types::{IterTypes, ReturnType, Type, TypeIterator};
-use super::{APIConverter, ComponentInterface, Delegate, DelegateMethod};
+use super::{APIConverter, ComponentInterface, DelegateObject, DelegateMethod};
 
 /// An "object" is an opaque type that can be instantiated and passed around by reference,
 /// have methods called on it, and so on - basically your classic Object Oriented Programming
@@ -381,7 +381,7 @@ impl Method {
 
     fn delegate_method<'a>(
         &self,
-        delegate_object: &Option<&'a Delegate>,
+        delegate_object: &Option<&'a DelegateObject>,
     ) -> Option<&'a DelegateMethod> {
         if delegate_object.is_none() || !self.uses_delegate_method() {
             None
@@ -392,7 +392,7 @@ impl Method {
         }
     }
 
-    pub fn delegated_return_type(&self, delegate_object: &Option<&Delegate>) -> Option<Type> {
+    pub fn delegated_return_type(&self, delegate_object: &Option<&DelegateObject>) -> Option<Type> {
         if let Some(dm) = self.delegate_method(delegate_object) {
             match dm.return_type() {
                 ReturnType::Concrete(t) => Some(t.clone()),
@@ -418,7 +418,7 @@ impl Method {
             .map(|name| Type::Error(name.to_owned()))
     }
 
-    pub fn delegated_throws_type(&self, delegate_object: &Option<&Delegate>) -> Option<Type> {
+    pub fn delegated_throws_type(&self, delegate_object: &Option<&DelegateObject>) -> Option<Type> {
         if let Some(dm) = self.delegate_method(&delegate_object) {
             dm.throws_type()
         } else {

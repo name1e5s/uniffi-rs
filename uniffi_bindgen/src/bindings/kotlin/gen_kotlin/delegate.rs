@@ -4,7 +4,7 @@
 
 use crate::bindings::backend::{CodeDeclaration, CodeOracle, CodeType};
 use crate::interface::types::ReturnType;
-use crate::interface::{ComponentInterface, Delegate};
+use crate::interface::{ComponentInterface, DelegateObject};
 use askama::Template;
 
 use super::filters;
@@ -31,14 +31,14 @@ impl CodeType for DelegateObjectCodeType {
 #[derive(Template)]
 #[template(syntax = "kt", escape = "none", path = "DelegateObjectTemplate.kt")]
 pub struct KotlinDelegateObject {
-    inner: Delegate,
+    inner: DelegateObject,
 }
 
 impl KotlinDelegateObject {
-    pub fn new(inner: Delegate, _ci: &ComponentInterface) -> Self {
+    pub fn new(inner: DelegateObject, _ci: &ComponentInterface) -> Self {
         Self { inner }
     }
-    pub fn inner(&self) -> &Delegate {
+    pub fn inner(&self) -> &DelegateObject {
         &self.inner
     }
 }
