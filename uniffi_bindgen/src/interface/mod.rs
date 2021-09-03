@@ -73,7 +73,7 @@ pub use namespace::Namespace;
 mod object;
 pub use object::{Constructor, Method, Object};
 mod delegate;
-pub use delegate::{DelegateObject, DelegateMethod};
+pub use delegate::{DelegateMethod, DelegateObject};
 mod record;
 pub use record::{Field, Record};
 

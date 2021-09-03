@@ -55,7 +55,7 @@ use super::attributes::{ConstructorAttributes, InterfaceAttributes, MethodAttrib
 use super::ffi::{FFIArgument, FFIFunction, FFIType};
 use super::function::Argument;
 use super::types::{IterTypes, ReturnType, Type, TypeIterator};
-use super::{APIConverter, ComponentInterface, DelegateObject, DelegateMethod};
+use super::{APIConverter, ComponentInterface, DelegateMethod, DelegateObject};
 
 /// An "object" is an opaque type that can be instantiated and passed around by reference,
 /// have methods called on it, and so on - basically your classic Object Oriented Programming

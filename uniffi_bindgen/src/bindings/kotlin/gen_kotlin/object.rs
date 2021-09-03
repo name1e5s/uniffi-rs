@@ -76,8 +76,8 @@ impl KotlinObject {
             _ => None,
         };
         Self {
-            delegate_object,
             inner,
+            delegate_object,
         }
     }
     pub fn inner(&self) -> &Object {

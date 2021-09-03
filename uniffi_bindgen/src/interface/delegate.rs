@@ -341,15 +341,9 @@ mod test {
         // exotic delegates through it_passes_through, which returns Sequence<Option<i32>> and throws nothing
         assert_eq!(
             m.delegated_return_type(&dobj),
-            Some(
-                Type::Sequence(
-                    Box::new(
-                        Type::Optional(
-                            Box::new(Type::Int32)
-                        )
-                    )
-                )
-            )
+            Some(Type::Sequence(Box::new(Type::Optional(Box::new(
+                Type::Int32
+            )))))
         );
         assert_eq!(m.delegated_throws_type(&dobj), None);
     }
