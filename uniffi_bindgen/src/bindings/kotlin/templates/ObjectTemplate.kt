@@ -15,7 +15,7 @@ class {{ obj.name()|class_name_kt }}(
     pointer: Pointer
     {%- match inner.delegate_type() %}
     {%- when Some with (d) %},
-    private val delegate: {{ d|type_kt }}
+    private val delegate: {{ d|type_kt }}<{{ obj.name()|class_name_kt }}>
     {%- else %}
     {%- endmatch %}
 ) : FFIObject(pointer), {{ obj.name()|class_name_kt }}Interface {
@@ -50,7 +50,7 @@ class {{ obj.name()|class_name_kt }}(
     {% for meth in obj.methods() -%}
     override fun {{ meth.name()|fn_name_kt }}({% call kt::arg_list_protocol(meth) %}) =
         {%- match meth.delegate_method_name() -%}
-        {%- when Some with (nm) %} delegate.{{ nm|fn_name_kt }} {
+        {%- when Some with (nm) %} delegate.{{ nm|fn_name_kt }}(this) {
             {% call method_body(meth) %}
         }
         {% else %}
@@ -95,7 +95,7 @@ callWithPointer {
 {% match obj.delegate_type() %}
     {%- when Some with (delegate_type) %}
         {%- let delegate_name = delegate_type|type_kt|var_name_kt %}
-        {{- delegate_name }}: {{ delegate_type|type_kt -}}
+        {{- delegate_name }}: {{ delegate_type|type_kt -}}<{{ obj.name()|class_name_kt }}>
         {%- if cons.arguments().len() != 0 %}, {% endif %}
         {%- call kt::arg_list_decl(cons) -%}
     {%- else %}

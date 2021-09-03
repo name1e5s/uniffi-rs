@@ -7,15 +7,15 @@ import uniffi.delegates.*
 /// MyDelegate is defined in the UDL file. It generates an interface.
 /// Implementations of the interface never cross the FFI boundary, and so
 /// can contain arbitrary Kotlin.
-class Delegate : MyDelegate {
+class Delegate : MyDelegate<RustObject> {
     var count = 0
     var lastString: String? = null
 
-    override fun <T> withReturn(thunk: () -> T): T = thunk()
-    override fun <T> stringSaver(thunk: () -> T) {
+    override fun <T> withReturn(obj: RustObject, thunk: () -> T): T = thunk()
+    override fun <T> stringSaver(obj: RustObject, thunk: () -> T) {
         lastString = thunk() as? String
     }
-    override fun <T> withCounter(thunk: () -> T): Int = thunk().let { ++count }
+    override fun <T> withCounter(obj: RustObject, thunk: () -> T): Int = thunk().let { ++count }
 }
 
 val delegate = Delegate()
