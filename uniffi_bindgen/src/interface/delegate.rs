@@ -4,10 +4,10 @@
 
 //! # Delegate object definitions for a `ComponentInterface`.
 //!
-//! This module converts "interface" definitions from UDL into [`Delegate`] structures
+//! This module converts "interface" definitions from UDL into [`DelegateObject`] structures
 //! that can be added to a `ComponentInterface`.
 //!
-//! A [`Delegate`] is a collection of methods defined by application code.
+//! A [`DelegateObject`] is a collection of methods defined by application code.
 //!
 //! A declaration in the UDL like this:
 //!
@@ -28,8 +28,8 @@
 //! # Ok::<(), anyhow::Error>(())
 //! ```
 //!
-//! Will result in an [`Object`] member with one [`Constructor`] and one [`DelegateMethod`] being added
-//! to the resulting [`ComponentInterface`]:
+//! Will result in an [`DelegateObject`] with one [`DelegateMethod`] and a corresponding [`Object`](super::Object)
+//! which uses that delegate object.
 //!
 //! ```
 //! # let ci = uniffi_bindgen::interface::ComponentInterface::from_webidl(r##"
